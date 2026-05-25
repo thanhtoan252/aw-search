@@ -1,0 +1,75 @@
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2025-latest
+    platform: linux/amd64
+    container_name: aw-sqlserver
+    environment:
+      SA_PASSWORD: "AdventureWorks@2024"
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: "Developer"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqldata:/var/opt/mssql
+      - ./docker/sqlserver/entrypoint.sh:/entrypoint.sh
+    entrypoint: /bin/bash /entrypoint.sh
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'AdventureWorks@2024' -No -Q \"SELECT 1 FROM sys.databases WHERE name='AdventureWorks2022' AND state_desc='ONLINE'\" | grep -q 1 || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 40
+      start_period: 30s
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.4.1
+    container_name: aw-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+    ports:
+      - "9200:9200"
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\"'"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: aw-api
+    ports:
+      - "5001:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__AdventureWorks=Server=sqlserver;Database=AdventureWorks2022;User Id=sa;Password=AdventureWorks@2024;TrustServerCertificate=True
+      - Elasticsearch__Uri=http://elasticsearch:9200
+      - Indexing__BatchSize=500
+      - Indexing__IntervalMinutes=60
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile
+    container_name: aw-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+
+volumes:
+  sqldata:
+  esdata:

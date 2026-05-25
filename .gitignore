@@ -1,0 +1,47 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor and IDE files
+.idea/
+.vscode/
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# .NET build output
+bin/
+obj/
+TestResults/
+*.nupkg
+*.snupkg
+
+# ASP.NET and local runtime output
+logs/
+*.log
+appsettings.Local.json
+
+# Node/Vite frontend
+node_modules/
+dist/
+coverage/
+.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Docker/local data
+docker-data/
+*.bak
+
+# Build artifacts
+artifacts/
+publish/

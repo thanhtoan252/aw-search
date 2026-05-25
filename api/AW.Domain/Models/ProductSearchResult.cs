@@ -1,0 +1,17 @@
+namespace AW.Domain.Models;
+
+public sealed record ProductSearchResult
+{
+    public int ProductId { get; init; }
+    public string Name { get; init; } = string.Empty;
+    public string ProductNumber { get; init; } = string.Empty;
+    public string? Color { get; init; }
+    public decimal ListPrice { get; init; }
+    public string? Size { get; init; }
+    public string? CategoryName { get; init; }
+    public string? SubcategoryName { get; init; }
+    public string? ModelName { get; init; }
+    public string? Description { get; init; }
+    public string? ProductLine { get; init; }
+    public bool IsDiscontinued { get; init; }
+}
