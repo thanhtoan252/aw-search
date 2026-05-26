@@ -1,5 +1,6 @@
 using AW.Domain.Entities;
 using AW.Infrastructure.Persistence.Configurations;
+using AW.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace AW.Infrastructure.Persistence;

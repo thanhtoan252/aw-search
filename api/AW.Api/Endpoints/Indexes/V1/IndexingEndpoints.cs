@@ -1,21 +1,21 @@
 using AW.Application.Interfaces;
 using AW.Api.Extensions;
-using AW.Api.Mappings;
+using AW.Api.Endpoints.Indexes.V1.Mappings;
 
-namespace AW.Api.Endpoints;
+namespace AW.Api.Endpoints.Indexes.V1;
 
 public static class IndexingEndpoints
 {
     public static IEndpointRouteBuilder MapIndexingEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/indexing").WithTags("Indexing");
+        var group = app.MapGroup("/indexing").WithTags("Indexing");
 
         group.MapGet("/status", GetStatusAsync)
-            .WithName("GetIndexingStatus")
+            .WithName("GetIndexingStatusV1")
             .WithSummary("Current Elasticsearch index statistics");
 
         group.MapPost("/trigger", TriggerAsync)
-            .WithName("TriggerIndexing")
+            .WithName("TriggerIndexingV1")
             .WithSummary("Manually trigger a full re-index");
 
         return app;

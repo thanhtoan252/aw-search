@@ -1,6 +1,7 @@
-using AW.Api.Endpoints;
+using Asp.Versioning;
+using AW.Api.Endpoints.Products.V1.Validators;
+using AW.Api.Extensions;
 using AW.Api.Middleware;
-using AW.Api.Validators;
 using AW.Application.Extensions;
 using AW.Infrastructure.Extensions;
 using FluentValidation;
@@ -16,7 +17,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog((context, config) =>
     config.ReadFrom.Configuration(context.Configuration));
 
-builder.Services.AddApplicationServices();
+builder.Services.AddApplicationServices(builder.Configuration);
 builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails(options =>
@@ -27,10 +28,21 @@ builder.Services.AddProblemDetails(options =>
     };
 });
 
-// ── FluentValidation ──────────────────────────────────────────────────────
 builder.Services.AddValidatorsFromAssemblyContaining<ProductSearchRequestValidator>();
 
-builder.Services.AddOpenApi();
+builder.Services
+    .AddApiVersioning(options =>
+    {
+        options.DefaultApiVersion = new ApiVersion(1.0);
+        options.AssumeDefaultVersionWhenUnspecified = true;
+        options.ReportApiVersions = true;
+        options.ApiVersionReader = new HeaderApiVersionReader("X-Api-Version");
+    })
+    .AddApiExplorer(options =>
+    {
+        options.GroupNameFormat = "'v'VVV";
+    })
+    .AddOpenApi();
 
 builder.Services.AddCors(options =>
     options.AddDefaultPolicy(policy =>
@@ -44,12 +56,11 @@ app.UseCors();
 
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.MapOpenApi().WithDocumentPerVersion();
     app.MapScalarApiReference("/docs");
 }
 
-app.MapProductSearchEndpoints();
-app.MapIndexingEndpoints();
+app.MapApiEndpoints();
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
    .WithTags("Health");
 

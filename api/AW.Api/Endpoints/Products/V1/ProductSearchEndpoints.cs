@@ -1,29 +1,29 @@
 using AW.Application.Interfaces;
-using AW.Api.DTOs.Requests;
 using AW.Api.Extensions;
-using AW.Api.Mappings;
+using AW.Api.Endpoints.Products.V1.DTOs.Requests;
+using AW.Api.Endpoints.Products.V1.Mappings;
 using AW.Domain.Common;
 using FluentValidation;
 
-namespace AW.Api.Endpoints;
+namespace AW.Api.Endpoints.Products.V1;
 
 public static class ProductSearchEndpoints
 {
     public static IEndpointRouteBuilder MapProductSearchEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/products").WithTags("Products");
+        var group = app.MapGroup("/products").WithTags("Products");
 
         group.MapGet("/search", SearchAsync)
-            .WithName("SearchProducts")
+            .WithName("SearchProductsV1")
             .WithSummary("Full-text search with faceted filtering")
             .WithDescription("Supports fuzzy matching on name/number/model/category. Filters: category, color, price range.");
 
         group.MapGet("/{id:int}", GetByIdAsync)
-            .WithName("GetProductById")
+            .WithName("GetProductByIdV1")
             .WithSummary("Get single product by ID from search index");
 
         group.MapGet("/{id:int}/thumbnail", GetThumbnailAsync)
-            .WithName("GetProductThumbnail")
+            .WithName("GetProductThumbnailV1")
             .WithSummary("Get product thumbnail image");
 
         return app;

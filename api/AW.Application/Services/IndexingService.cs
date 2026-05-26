@@ -1,14 +1,19 @@
 using AW.Application.Interfaces;
+using AW.Application.Options;
 using AW.Domain.Common;
 using AW.Domain.Models;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace AW.Application.Services;
 
-public sealed class IndexingService(IProductRepository productRepository, IProductSearchStore searchStore, IConfiguration configuration, ILogger<IndexingService> logger) : IIndexingService
+public sealed class IndexingService(
+    IProductRepository productRepository,
+    IProductSearchStore searchStore,
+    IOptions<IndexingOptions> options,
+    ILogger<IndexingService> logger) : IIndexingService
 {
-    private readonly int _batchSize = configuration.GetValue<int>("Indexing:BatchSize", 500);
+    private readonly int _batchSize = options.Value.BatchSize;
 
     public async Task RunIndexingAsync(CancellationToken ct = default)
     {

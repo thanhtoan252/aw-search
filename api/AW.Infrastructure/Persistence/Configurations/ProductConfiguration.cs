@@ -1,4 +1,5 @@
 using AW.Domain.Entities;
+using AW.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

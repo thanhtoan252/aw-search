@@ -1,8 +1,8 @@
-using AW.Api.DTOs.Requests;
-using AW.Api.DTOs.Responses;
+using AW.Api.Endpoints.Products.V1.DTOs.Requests;
+using AW.Api.Endpoints.Products.V1.DTOs.Responses;
 using AW.Domain.Models;
 
-namespace AW.Api.Mappings;
+namespace AW.Api.Endpoints.Products.V1.Mappings;
 
 internal static class ProductSearchMapper
 {
@@ -14,8 +14,8 @@ internal static class ProductSearchMapper
         ProductLine = req.ProductLine,
         MinPrice = req.MinPrice,
         MaxPrice = req.MaxPrice,
-        Page = Math.Max(1, req.Page),
-        PageSize = Math.Clamp(req.PageSize, 1, 100),
+        Page = Math.Max(1, req.Page ?? 1),
+        PageSize = Math.Clamp(req.PageSize ?? 20, 1, 100),
     };
 
     internal static SearchResultDto ToDto(this SearchResponse response) => new()
@@ -50,11 +50,4 @@ internal static class ProductSearchMapper
         ProductLine = r.ProductLine,
         IsDiscontinued = r.IsDiscontinued,
     };
-
-    internal static IndexStatusDto ToDto(this IndexStats stats) => new(
-        stats.IndexName,
-        stats.DocumentCount,
-        stats.SizeBytes,
-        stats.IsHealthy
-    );
 }

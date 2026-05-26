@@ -38,7 +38,7 @@ On first startup, `docker/sqlserver/entrypoint.sh` downloads and restores Advent
 ```text
 .
 +-- api
-|   +-- AW.Api              # Minimal API endpoints, DTOs, validators, problem details
+|   +-- AW.Api              # Versioned Minimal API endpoints, DTOs, validators, problem details
 |   +-- AW.Application      # Use-case services and persistence/search interfaces
 |   +-- AW.Domain           # Product entities, search models, Result/Error primitives
 |   +-- AW.Infrastructure   # EF Core, Elasticsearch, indexing background job
@@ -118,6 +118,8 @@ The UI calls `/api/...` by default. Vite proxies that to `http://localhost:5000`
 Set `VITE_API_URL` only when you want to bypass the proxy and call a specific API origin directly.
 
 ## API Endpoints
+
+API versioning uses the `X-Api-Version` request header. If the header is omitted, the API assumes version `1.0`.
 
 ```text
 GET  /api/products/search?q={query}&category={cat}&color={color}&productLine={line}&minPrice={min}&maxPrice={max}&page={n}&pageSize={n}

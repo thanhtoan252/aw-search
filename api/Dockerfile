@@ -7,6 +7,7 @@ COPY ["AW.Api/AW.Api.csproj", "AW.Api/"]
 COPY ["AW.Application/AW.Application.csproj", "AW.Application/"]
 COPY ["AW.Infrastructure/AW.Infrastructure.csproj", "AW.Infrastructure/"]
 COPY ["AW.Domain/AW.Domain.csproj", "AW.Domain/"]
+
 RUN dotnet restore "AW.slnx"
 
 COPY . .
@@ -18,6 +19,7 @@ WORKDIR /app
 
 RUN apk add --no-cache icu-libs
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
+
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 USER appuser
 

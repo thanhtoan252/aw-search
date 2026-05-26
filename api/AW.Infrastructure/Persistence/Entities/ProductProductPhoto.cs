@@ -1,4 +1,4 @@
-namespace AW.Infrastructure.Persistence;
+namespace AW.Infrastructure.Persistence.Entities;
 
 internal sealed class ProductProductPhoto
 {

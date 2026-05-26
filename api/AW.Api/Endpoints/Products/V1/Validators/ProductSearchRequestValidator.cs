@@ -1,7 +1,7 @@
-using AW.Api.DTOs.Requests;
+using AW.Api.Endpoints.Products.V1.DTOs.Requests;
 using FluentValidation;
 
-namespace AW.Api.Validators;
+namespace AW.Api.Endpoints.Products.V1.Validators;
 
 public sealed class ProductSearchRequestValidator : AbstractValidator<ProductSearchRequestDto>
 {
@@ -9,13 +9,15 @@ public sealed class ProductSearchRequestValidator : AbstractValidator<ProductSea
     {
         RuleFor(x => x.Page)
             .GreaterThan(0)
-            .WithMessage("Page must be greater than 0");
+            .WithMessage("Page must be greater than 0")
+            .When(x => x.Page.HasValue);
 
         RuleFor(x => x.PageSize)
             .GreaterThan(0)
             .WithMessage("PageSize must be greater than 0")
             .LessThanOrEqualTo(100)
-            .WithMessage("PageSize cannot exceed 100");
+            .WithMessage("PageSize cannot exceed 100")
+            .When(x => x.PageSize.HasValue);
 
         RuleFor(x => x.Q)
             .MaximumLength(200)

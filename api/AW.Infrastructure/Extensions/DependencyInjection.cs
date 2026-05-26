@@ -40,20 +40,27 @@ public static class DependencyInjection
 
     private static IServiceCollection AddElasticsearch(this IServiceCollection services, IConfiguration configuration)
     {
-        var esOptions = GetElasticsearchOptions(configuration);
-        var settings = CreateElasticsearchSettings(esOptions);
+        var elasticsearchSection = configuration.GetSection(ElasticsearchOptions.SectionName);
 
-        services.AddSingleton(new ElasticsearchClient(settings));
+        services.Configure<ElasticsearchOptions>(elasticsearchSection.Bind);
+        services.AddSingleton(sp =>
+        {
+            var esOptions = sp.GetRequiredService<IOptions<ElasticsearchOptions>>().Value;
+            var settings = CreateElasticsearchSettings(esOptions);
+
+            return new ElasticsearchClient(settings);
+        });
 
         return services;
     }
 
-    private static ElasticsearchOptions GetElasticsearchOptions(IConfiguration configuration) =>
-        configuration.GetSection(ElasticsearchOptions.SectionName).Get<ElasticsearchOptions>()
-        ?? throw new InvalidOperationException("Elasticsearch configuration is missing");
-
     private static ElasticsearchClientSettings CreateElasticsearchSettings(ElasticsearchOptions esOptions)
     {
+        if (string.IsNullOrWhiteSpace(esOptions.Uri))
+        {
+            throw new InvalidOperationException("Elasticsearch configuration is missing");
+        }
+
         var settings = new ElasticsearchClientSettings(new Uri(esOptions.Uri));
         return esOptions.EnableDebugMode ? EnableDebugLogging(settings) : settings;
     }
@@ -68,7 +75,10 @@ public static class DependencyInjection
 
     private static void WriteBody(string label, byte[]? body)
     {
-        if (body is null) { return; }
+        if (body is null)
+        {
+            return;
+        }
 
         Console.WriteLine($"{label}: {System.Text.Encoding.UTF8.GetString(body)}");
     }

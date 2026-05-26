@@ -1,4 +1,4 @@
-namespace AW.Api.DTOs.Responses;
+namespace AW.Api.Endpoints.Indexes.V1.DTOs.Responses;
 
 public sealed record IndexStatusDto(
     string IndexName,
