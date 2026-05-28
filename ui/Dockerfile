@@ -1,15 +1,21 @@
-FROM node:26.2.0-alpine3.23 AS build
+FROM node:24-alpine AS build
+
 WORKDIR /app
 
-COPY package.json ./
-RUN npm install
+COPY package*.json ./
+RUN npm ci
 
 COPY . .
 RUN npm run build
 
-FROM nginx:1.31.1-alpine3.23 AS runtime
-COPY --from=build /app/dist /usr/share/nginx/html
+FROM nginx:1.29-alpine
+
+RUN apk add --no-cache gettext
+
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY docker-entrypoint.sh /docker-entrypoint.d/40-runtime-config.sh
+COPY --from=build /app/dist/aw-search-ui/browser /usr/share/nginx/html
+
+RUN chmod +x /docker-entrypoint.d/40-runtime-config.sh
 
 EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]

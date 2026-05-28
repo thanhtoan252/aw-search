@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 110" role="img" aria-label="red road bike">
+  <circle cx="43" cy="76" r="23" fill="none" stroke="#282828" stroke-width="4"/>
+  <circle cx="137" cy="76" r="23" fill="none" stroke="#282828" stroke-width="4"/>
+  <path d="M43 76h40l24-38 30 38H83L61 43h46" fill="none" stroke="#dc101c" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M107 38l10-18m-56 23-8-17m59-6h19m-82 6h17" stroke="#202020" stroke-width="5" stroke-linecap="round"/>
+</svg>

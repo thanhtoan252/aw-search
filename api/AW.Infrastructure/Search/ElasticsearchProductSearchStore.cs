@@ -4,7 +4,6 @@ using AW.Domain.Entities;
 using AW.Domain.Models;
 using Elastic.Clients.Elasticsearch;
 using Elastic.Clients.Elasticsearch.Aggregations;
-using Elastic.Clients.Elasticsearch.Core.Search;
 using Elastic.Clients.Elasticsearch.Fluent;
 using Microsoft.Extensions.Logging;
 using IndexStats = AW.Domain.Models.IndexStats;
@@ -66,7 +65,6 @@ internal sealed class ElasticsearchProductSearchStore(
                     .Boolean(f => f.IsDiscontinued)
                     .Date(f => f.SellStartDate)
                     .Date(f => f.IndexedAt)
-                    .Binary(f => f.ThumbnailPhoto!)
                 )
             ), ct);
 
@@ -114,16 +112,12 @@ internal sealed class ElasticsearchProductSearchStore(
             .Indices(IndexName)
             .From((filter.Page - 1) * filter.PageSize)
             .Size(filter.PageSize)
-            .Source(WithoutThumbnail())
             .Query(q => queryHelper.BuildQuery(q, filter))
             .Aggregations(BuildFacetAggregations)
             .Sort(so => so
                 .Score(sc => sc.Order(SortOrder.Desc))
                 .Field(f => f.ListPrice, fd => fd.Order(SortOrder.Asc))
             ), ct);
-
-    private static SourceConfig WithoutThumbnail() =>
-        new(new SourceFilter { Excludes = Infer.Field<ProductDocument>(f => f.ThumbnailPhoto) });
 
     private static void BuildFacetAggregations(FluentDictionaryOfStringAggregation<ProductDocument> a)
     {
@@ -175,8 +169,7 @@ internal sealed class ElasticsearchProductSearchStore(
 
     private Task<GetResponse<ProductDocument>> ExecuteGetByIdAsync(int id, CancellationToken ct) =>
         client.GetAsync<ProductDocument>(id.ToString(), idx => idx
-            .Index(IndexName)
-            .SourceExcludes(Infer.Field<ProductDocument>(f => f.ThumbnailPhoto)), ct);
+            .Index(IndexName), ct);
 
     private Result<ProductSearchResult> ProductLookupFailure(GetResponse<ProductDocument> response)
     {
@@ -190,53 +183,6 @@ internal sealed class ElasticsearchProductSearchStore(
         Result<ProductSearchResult>.Failure(Error.NotFound(
             "Products.NotFound",
             $"Product {id} was not found in the search index."));
-
-    public async Task<Result<byte[]>> GetThumbnailAsync(int id, CancellationToken ct = default)
-    {
-        var response = await ExecuteGetThumbnailAsync(id, ct);
-
-        if (response.ElasticsearchServerError is not null)
-        {
-            return ThumbnailLookupFailure(response);
-        }
-
-        if (!HasThumbnail(response))
-        {
-            return ThumbnailNotFound(id);
-        }
-
-        if (!response.IsSuccess())
-        {
-            return ThumbnailLookupFailure(response);
-        }
-
-        return GetThumbnailBytes(response);
-    }
-
-    private Task<GetResponse<ProductDocument>> ExecuteGetThumbnailAsync(int id, CancellationToken ct) =>
-        client.GetAsync<ProductDocument>(id.ToString(), idx => idx
-            .Index(IndexName)
-            .SourceIncludes(Infer.Field<ProductDocument>(f => f.ThumbnailPhoto)), ct);
-
-    private Result<byte[]> ThumbnailLookupFailure(GetResponse<ProductDocument> response)
-    {
-        var reason = response.ElasticsearchServerError?.Error?.Reason;
-        logger.LogError("Elasticsearch get product thumbnail failed: {Error}",
-            reason ?? response.ApiCallDetails.HttpStatusCode?.ToString());
-
-        return Result<byte[]>.Failure(ElasticsearchUnavailable(reason ?? "Product thumbnail lookup failed."));
-    }
-
-    private static bool HasThumbnail(GetResponse<ProductDocument> response) =>
-        response.Found && response.Source?.ThumbnailPhoto is { Length: > 0 };
-
-    private static byte[] GetThumbnailBytes(GetResponse<ProductDocument> response) =>
-        response.Source!.ThumbnailPhoto!;
-
-    private static Result<byte[]> ThumbnailNotFound(int id) =>
-        Result<byte[]>.Failure(Error.NotFound(
-            "Products.ThumbnailNotFound",
-            $"Thumbnail for product {id} was not found in the search index."));
 
     // ── Stats ─────────────────────────────────────────────────────────────────
 

@@ -1,0 +1,76 @@
+<main cdkScrollable class="min-h-screen bg-white px-5 py-4 text-neutral-950 sm:px-8 lg:px-14">
+  <section class="mx-auto max-w-[1220px]">
+    <header class="space-y-3">
+      <div>
+        <h1 class="text-[30px] font-semibold leading-tight tracking-normal">Product Showcase</h1>
+        <p class="mt-2 text-sm text-neutral-500">
+          Search Elasticsearch-backed products and narrow results with URL-synced filters.
+        </p>
+      </div>
+
+      <label class="aw-search-field">
+        <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="m21 21-4.3-4.3m1.3-5.2a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <input
+          pInputText
+          class="aw-search-field__input"
+          type="search"
+          placeholder="Search products, models, or categories"
+          [formControl]="form.controls.q"
+        />
+      </label>
+    </header>
+
+    <div class="my-6 h-px bg-neutral-200"></div>
+
+    <div class="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+      <app-product-filters [form]="form" (resetFilters)="resetFilters()" />
+
+      <section class="min-w-0">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <p class="text-sm text-neutral-500">
+            @if (store.loading()) {
+              Loading products...
+            } @else {
+              {{ store.rangeStart() | number }}-{{ store.rangeEnd() | number }} of {{ store.total() | number }} products
+            }
+          </p>
+          @if (store.hasFilters()) {
+            <span class="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-700">Filtered</span>
+          }
+        </div>
+
+        @if (store.error()) {
+          <div class="rounded-lg border border-red-200 bg-red-50 p-6 text-sm text-red-700">
+            {{ store.error() }}
+          </div>
+        } @else if (store.loading()) {
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            @for (_ of skeletons; track $index) {
+              <div class="h-[392px] animate-pulse rounded-lg border border-neutral-200 bg-neutral-50"></div>
+            }
+          </div>
+        } @else if (store.items().length === 0) {
+          <div class="rounded-lg border border-neutral-200 p-10 text-center">
+            <h2 class="text-lg font-semibold">No products found</h2>
+            <p class="mt-2 text-sm text-neutral-500">Adjust the search or clear filters to see more results.</p>
+          </div>
+        } @else {
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            @for (product of store.items(); track product.id) {
+              <app-product-card [product]="product" />
+            }
+          </div>
+
+          <app-pagination
+            [currentPage]="store.query.page()"
+            [rows]="store.query.pageSize()"
+            [totalRecords]="store.total()"
+            (pageSelected)="goToPage($event)"
+          />
+        }
+      </section>
+    </div>
+  </section>
+</main>

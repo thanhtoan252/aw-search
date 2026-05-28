@@ -23,5 +23,4 @@ internal sealed record ProductDocument
     public bool IsDiscontinued { get; init; }
     public DateTime SellStartDate { get; init; }
     public DateTime IndexedAt { get; init; }
-    public byte[]? ThumbnailPhoto { get; init; }
 }

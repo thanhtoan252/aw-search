@@ -7,4 +7,6 @@ public interface IProductRepository
     Task<int> CountAsync(CancellationToken ct = default);
 
     Task<IReadOnlyList<Product>> GetPagedAsync(int skip, int take, CancellationToken ct = default);
+
+    Task<byte[]?> GetThumbnailAsync(int productId, CancellationToken ct = default);
 }

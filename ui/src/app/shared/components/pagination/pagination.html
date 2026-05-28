@@ -1,0 +1,13 @@
+<nav class="aw-pagination" aria-label="Pagination">
+  <p-paginator
+    styleClass="aw-paginator"
+    [first]="first()"
+    [rows]="rows()"
+    [totalRecords]="totalRecords()"
+    [pageLinkSize]="5"
+    [showFirstLastIcon]="true"
+    [showCurrentPageReport]="false"
+    [alwaysShow]="false"
+    (onPageChange)="onPageChange($event)"
+  />
+</nav>

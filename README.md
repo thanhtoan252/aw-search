@@ -1,6 +1,6 @@
 # AdventureWorks Elasticsearch Search
 
-Full-stack product search for the AdventureWorks database. SQL Server remains the source of truth, Elasticsearch serves fast faceted search, ASP.NET Core exposes the API, and React renders the search UI.
+Full-stack product search for the AdventureWorks database. SQL Server remains the source of truth, Elasticsearch provides fast full-text search and facets, ASP.NET Core exposes the API, and Angular renders the product search UI.
 
 ## Stack
 
@@ -11,34 +11,45 @@ Full-stack product search for the AdventureWorks database. SQL Server remains th
 | Backend | ASP.NET Core 10 Minimal API |
 | Data access | EF Core 10 |
 | Background work | `BackgroundService` + bounded `Channel<bool>` |
-| Frontend | React 19 + TypeScript 6 + Vite 8 |
-| UI runtime | nginx proxy for `/api` in Docker |
+| API docs | OpenAPI + Scalar |
+| Frontend | Angular 21 + TypeScript 5.9 |
+| UI state | NgRx Signals |
+| UI components | PrimeNG 21, Angular CDK, Tailwind CSS 4 CLI |
+| UI runtime | nginx with `/api` reverse proxy and runtime config |
 | Logging | Serilog console + rolling file |
 
 ## Quick Start
 
+Create local environment settings, then build and start the stack:
+
 ```bash
+cp .env.example .env
 docker compose up -d --build
 ```
 
-On first startup, `docker/sqlserver/entrypoint.sh` downloads and restores AdventureWorks2022. Later restarts skip the restore when the database already exists.
+On first startup, `docker/sqlserver/entrypoint.sh` downloads and restores `AdventureWorks2022.bak`. Later restarts reuse the Docker volume and skip the restore when the database already exists.
 
 ### Service URLs
 
+With the default `.env.example` values:
+
 | Service | URL |
 | --- | --- |
-| React UI | http://localhost:3000 |
+| Angular UI | http://localhost:3000 |
 | Search API | http://localhost:5001/api/products/search?q=bike |
 | API docs | http://localhost:5001/docs |
 | Health | http://localhost:5001/health |
 | Elasticsearch | http://localhost:9200 |
+| SQL Server | localhost:1433 |
 
-## Current Structure
+The API docs are enabled when `ASPNETCORE_ENVIRONMENT=Development`.
+
+## Project Structure
 
 ```text
 .
 +-- api
-|   +-- AW.Api              # Versioned Minimal API endpoints, DTOs, validators, problem details
+|   +-- AW.Api              # Minimal API endpoints, DTOs, validation, problem details
 |   +-- AW.Application      # Use-case services and persistence/search interfaces
 |   +-- AW.Domain           # Product entities, search models, Result/Error primitives
 |   +-- AW.Infrastructure   # EF Core, Elasticsearch, indexing background job
@@ -47,75 +58,53 @@ On first startup, `docker/sqlserver/entrypoint.sh` downloads and restores Advent
 +-- docker
 |   +-- sqlserver           # AdventureWorks restore entrypoint
 +-- ui
-|   +-- src
+|   +-- public              # Runtime config template and static assets
+|   +-- src/app
+|   |   +-- core            # App runtime configuration
 |   |   +-- features
-|   |   |   +-- indexing
-|   |   |   +-- product-search
-|   |   +-- shared
+|   |   |   +-- products    # Product search page, store, API service, components
+|   |   +-- shared          # Shared UI components
+|   +-- angular.json
 |   +-- Dockerfile
 |   +-- nginx.conf
-|   +-- vite.config.ts
+|   +-- proxy.conf.json
 +-- docker-compose.yml
 ```
 
-## Why These Patterns
-
-### Clean Architecture
+## Backend Design
 
 The backend is split into `Api`, `Application`, `Domain`, and `Infrastructure`.
 
-`AW.Application` depends on interfaces such as `IProductRepository` and `IProductSearchStore`, not on EF Core or Elasticsearch directly. `AW.Infrastructure` provides those implementations. This keeps business flow independent from storage details, so SQL Server or Elasticsearch changes do not leak into endpoint code.
+`AW.Application` depends on interfaces such as `IProductRepository`, `IProductSearchStore`, `IProductSearchService`, and `IIndexingTrigger`. `AW.Infrastructure` supplies the EF Core, Elasticsearch, and background job implementations. This keeps endpoint code independent from storage details.
 
-MediatR is intentionally not used. The use cases are small enough that direct services are clearer: fewer moving parts, easier navigation, and less ceremony.
+Expected failures use `Result<T>` and `Error`, then endpoints convert those errors to RFC 7807 `ProblemDetails`. Unexpected exceptions are handled by `GlobalExceptionHandler`.
 
-### Result/Error Instead Of Expected Exceptions
+### Data Paths
 
-Expected failures use `Result<T>` and `Error`:
-
-- validation errors
-- product not found
-- manual indexing already queued
-- Elasticsearch unavailable
-
-Endpoints convert those errors to RFC 7807 `ProblemDetails` in one place. Exceptions are reserved for unexpected failures and handled by `GlobalExceptionHandler`.
-
-### Repository And Search Store Boundaries
-
-`IProductRepository` reads product data from SQL Server for indexing. `IProductSearchStore` owns Elasticsearch index creation, bulk indexing, search, thumbnail lookup, and stats.
-
-This separation matters because indexing is a pipeline:
+Indexing reads products from SQL Server and writes documents to Elasticsearch:
 
 ```text
 SQL Server -> ProductRepository -> IndexingService -> IProductSearchStore -> Elasticsearch
 ```
 
-Search is a separate read path:
+Search reads from Elasticsearch, while thumbnails are still served from SQL Server:
 
 ```text
-HTTP request -> Endpoint -> ProductSearchService -> IProductSearchStore -> Elasticsearch
+HTTP request -> ProductSearchEndpoints -> ProductSearchService -> Elasticsearch
+HTTP thumbnail request -> ProductSearchService -> ProductRepository -> SQL Server
 ```
 
-### BackgroundService + Channel
+## Frontend Design
 
-`ProductIndexingBackgroundJob` runs the first index after startup, repeats on an interval, and also accepts manual triggers from `POST /api/indexing/trigger`.
+The UI is an Angular application using route-backed search state.
 
-The trigger queue is a bounded `Channel<bool>` with capacity `1`. That prevents overlapping re-index requests. If a trigger is already queued, the API returns a conflict instead of stacking duplicate work.
+- `ProductsPageComponent` owns the filter form, URL query params, pagination, and page events.
+- `ProductsStore` is an NgRx Signals store for query state, loading, errors, totals, and computed ranges.
+- `ProductsApiService` calls `/api/products/search`, validates backend responses with Zod, and maps API products into UI products.
+- `ProductFilters`, `ProductCard`, and `Pagination` provide the feature UI.
+- Tailwind CSS is generated into `src/tailwind.generated.css` before Angular builds.
 
-### Feature Folders In The UI
-
-The React app groups code by feature:
-
-- `features/product-search` contains the search API client, hook, components, and types.
-- `features/indexing` contains index status UI and API calls.
-- `shared` contains cross-feature utilities and API base configuration.
-
-This keeps feature code close to the UI that uses it and avoids a flat `components/`, `hooks/`, `api/` layout that becomes harder to scan as the app grows.
-
-### Relative `/api` Calls
-
-The UI calls `/api/...` by default. Vite proxies that to `http://localhost:5000` during local development, and nginx proxies it to the API container in Docker.
-
-Set `VITE_API_URL` only when you want to bypass the proxy and call a specific API origin directly.
+The browser reads `window.__APP_CONFIG__.apiUrl` from `/runtime-config.js`. In Docker, `ui/docker-entrypoint.sh` writes that file from `ui/public/runtime-config.template.js` using the `API_URL` environment variable. If `API_URL` is empty, the UI uses same-origin `/api` calls through nginx.
 
 ## API Endpoints
 
@@ -130,46 +119,39 @@ POST /api/indexing/trigger
 GET  /health
 ```
 
-## Development
+Search request validation:
 
-### Backend
+| Field | Rule |
+| --- | --- |
+| `q` | Max 200 characters |
+| `page` | Greater than 0 |
+| `pageSize` | Greater than 0 and at most 100 |
+| `minPrice` / `maxPrice` | Non-negative, and `minPrice <= maxPrice` when both are supplied |
 
-Start dependencies:
+## Search Behavior
 
-```bash
-docker compose up -d sqlserver elasticsearch
-```
+Search uses Elasticsearch `multi_match` with `best_fields` and `AUTO` fuzziness. Configured field boosts are:
 
-Run the API:
+| Field | Boost |
+| --- | --- |
+| `name` | 3.0 |
+| `productNumber` | 2.0 |
+| `modelName` | 2.0 |
+| `description` | 1.0 |
+| `categoryName` | 1.0 |
+| `subcategoryName` | 1.0 |
 
-```bash
-cd api
-dotnet restore AW.slnx
-dotnet run --project AW.Api
-```
+Filters are applied through `bool.filter` for category, color, product line, and price range. Results sort by `_score desc`, then `listPrice asc`.
 
-The API listens on `http://localhost:5000` when run directly. Docker Compose exposes it at `http://localhost:5001`.
+Returned facets:
 
-### Frontend
+- `categories`
+- `colors`
+- `productLines`
 
-Requires Node.js `^20.19.0` or `>=22.12.0` for Vite 8. The Docker image uses Node 26.
+## Indexing
 
-```bash
-cd ui
-npm install
-npm run dev
-```
-
-Vite starts at `http://localhost:3000` when the port is available. If `3000` is busy, Vite prints the alternate URL, for example `http://localhost:3001`.
-
-## Indexing Flow
-
-1. `ProductIndexingBackgroundJob` waits 15 seconds after startup.
-2. `ElasticsearchProductSearchStore.EnsureIndexExistsAsync()` creates `aw-products` if needed.
-3. `IndexingService.RunIndexingAsync()` reads products from SQL Server in batches.
-4. `ProductDocumentMapper.ToDocument()` maps domain products to Elasticsearch documents.
-5. `BulkIndexAsync()` upserts documents with `ProductId` as the Elasticsearch document ID.
-6. The job waits for either the configured interval or a manual trigger.
+`ProductIndexingBackgroundJob` waits 15 seconds after startup, ensures the Elasticsearch index exists, then runs the first indexing pass. After that, it re-indexes on the configured interval or when `POST /api/indexing/trigger` queues a manual run.
 
 Default settings:
 
@@ -179,32 +161,7 @@ Default settings:
 | `Indexing:IntervalMinutes` | `60` |
 | Elasticsearch index | `aw-products` |
 
-## Search Flow
-
-```text
-GET /api/products/search
-  -> ProductSearchRequestDto
-  -> FluentValidation
-  -> ProductSearchMapper.ToFilter()
-  -> ProductSearchService
-  -> ElasticsearchQueryHelper.BuildQuery()
-  -> ElasticsearchProductSearchStore.SearchAsync()
-  -> ProductDocumentMapper.ToResult()
-  -> ProductSearchMapper.ToDto()
-```
-
-Query behavior:
-
-- text search uses `multi_match` with `best_fields`
-- `name` is boosted highest because product names are the strongest relevance signal
-- `productNumber` and `modelName` are also boosted because users often search by code or model
-- filters use `bool.filter`, so category/color/price filtering does not distort relevance scores
-- facets are returned for categories, colors, and product lines
-- results sort by `_score desc`, then `listPrice asc`
-
-Thumbnail images are stored in Elasticsearch but excluded from search responses. The UI fetches each image through `GET /api/products/{id}/thumbnail`, which keeps normal search payloads small.
-
-## Elasticsearch Index Shape
+### Elasticsearch Index Shape
 
 ```text
 aw-products
@@ -224,21 +181,66 @@ aw-products
 +-- isDiscontinued     boolean
 +-- sellStartDate      date
 +-- indexedAt          date
-+-- thumbnailPhoto     binary
 ```
 
-`product_analyzer` uses `standard` tokenization plus `lowercase` and `asciifolding`, so searches are case-insensitive and more tolerant of accents.
+`product_analyzer` uses the `standard` tokenizer with `lowercase` and `asciifolding` filters.
 
 ## Configuration
+
+Docker Compose reads these values from `.env`:
+
+| Key | Purpose |
+| --- | --- |
+| `UI_PORT` | Host port for nginx/frontend |
+| `API_PORT` | Host port for the API container |
+| `API_URL` | Runtime frontend API origin. Leave empty for same-origin `/api` through nginx, or set `http://localhost:5001` to call the exposed API directly. |
+| `ASPNETCORE_ENVIRONMENT` | API environment |
+| `SQLSERVER_SA_PASSWORD` | SQL Server `sa` password |
+| `ELASTICSEARCH_URI` | API-to-Elasticsearch URI |
+| `INDEXING_BATCH_SIZE` | Products per bulk indexing batch |
+| `INDEXING_INTERVAL_MINUTES` | Scheduled re-index interval |
+
+API app settings:
 
 | Key | Purpose |
 | --- | --- |
 | `ConnectionStrings:AdventureWorks` | SQL Server connection string |
 | `Elasticsearch:Uri` | Elasticsearch node URI |
-| `Elasticsearch:EnableDebugMode` | Log Elasticsearch request and response bodies |
+| `Elasticsearch:EnableDebugMode` | Logs Elasticsearch request and response bodies |
 | `Indexing:BatchSize` | Products per bulk indexing batch |
 | `Indexing:IntervalMinutes` | Scheduled re-index interval |
-| `VITE_API_URL` | Optional frontend API origin override |
+
+## Local Development
+
+### Backend
+
+Start dependencies:
+
+```bash
+docker compose up -d sqlserver elasticsearch
+```
+
+Run the API:
+
+```bash
+cd api
+dotnet restore AW.slnx
+dotnet run --project AW.Api
+```
+
+The Docker API container listens on port `8080` internally and is exposed as `http://localhost:5001` by the default `.env.example`.
+
+### Frontend
+
+Install packages and run Angular dev server:
+
+```bash
+cd ui
+npm install
+npm start
+```
+
+`npm start` builds Tailwind once, starts the Tailwind watcher, and runs `ng serve --host 0.0.0.0`. Angular uses `proxy.conf.json` to proxy `/api/**` to `http://localhost:5001`.
 
 ## Verification
 

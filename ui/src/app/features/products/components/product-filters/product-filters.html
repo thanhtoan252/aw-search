@@ -1,0 +1,64 @@
+<p-card class="aw-filter-panel">
+  <div class="mb-5 flex items-center justify-between">
+    <div class="text-base font-semibold">Filters</div>
+    <p-button label="Reset" severity="secondary" size="small" [text]="true" (onClick)="resetFilters.emit()" />
+  </div>
+
+  <form class="space-y-5" [formGroup]="form()">
+    <label class="block space-y-2">
+      <span class="text-sm font-medium">Category</span>
+      <p-select
+        formControlName="category"
+        [options]="categories"
+        optionLabel="label"
+        optionValue="value"
+        styleClass="w-full"
+      />
+    </label>
+
+    <label class="block space-y-2">
+      <span class="text-sm font-medium">Brand</span>
+      <p-select
+        formControlName="brand"
+        [options]="brands"
+        optionLabel="label"
+        optionValue="value"
+        styleClass="w-full"
+      />
+    </label>
+
+    <label class="block space-y-2">
+      <span class="text-sm font-medium">Color</span>
+      <p-select
+        formControlName="color"
+        [options]="colors"
+        optionLabel="label"
+        optionValue="value"
+        styleClass="w-full"
+      />
+    </label>
+
+    <div class="space-y-3">
+      <div class="flex items-center justify-between gap-3">
+        <span class="text-sm font-medium">Price range</span>
+        <span class="text-sm text-neutral-500">
+          {{ form().controls.minPrice.value | currency: 'USD' : 'symbol' : '1.0-0' }} -
+          {{ form().controls.maxPrice.value | currency: 'USD' : 'symbol' : '1.0-0' }}
+        </span>
+      </div>
+      <div class="space-y-4 px-1">
+        <p-slider formControlName="minPrice" [min]="0" [max]="5000" [step]="50" />
+        <p-slider formControlName="maxPrice" [min]="0" [max]="5000" [step]="50" />
+      </div>
+      <div class="flex justify-between text-xs text-neutral-500">
+        <span>$0</span>
+        <span>$5,000</span>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2 text-sm">
+      <p-checkbox formControlName="available" [binary]="true" inputId="available-now" />
+      <label for="available-now">Available now</label>
+    </div>
+  </form>
+</p-card>

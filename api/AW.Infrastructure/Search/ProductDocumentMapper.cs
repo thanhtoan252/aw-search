@@ -24,7 +24,6 @@ internal static class ProductDocumentMapper
         IsDiscontinued = p.IsDiscontinued,
         SellStartDate = p.SellStartDate,
         IndexedAt = DateTime.UtcNow,
-        ThumbnailPhoto = p.ThumbnailPhoto,
     };
 
     internal static ProductSearchResult ToResult(ProductDocument doc) => new()

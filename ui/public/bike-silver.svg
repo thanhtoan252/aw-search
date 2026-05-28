@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 110" role="img" aria-label="silver mountain bike">
+  <circle cx="43" cy="76" r="23" fill="none" stroke="#3b3b3b" stroke-width="4"/>
+  <circle cx="137" cy="76" r="23" fill="none" stroke="#3b3b3b" stroke-width="4"/>
+  <path d="M43 76h35l24-38 35 38H78L59 47h43" fill="none" stroke="#d9dce1" stroke-width="7" stroke-linejoin="round"/>
+  <path d="M43 76h35l24-38 35 38H78L59 47h43" fill="none" stroke="#8e949d" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M102 38l10-18m-55 27-8-19m58-8h18m-80 8h17" stroke="#2b2b2b" stroke-width="5" stroke-linecap="round"/>
+</svg>

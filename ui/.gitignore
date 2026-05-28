@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Angular build output and cache
+dist/
+.angular/
+
+# Test and coverage output
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local environment and generated runtime config
+.env
+.env.*
+!.env.example
+public/runtime-config.js

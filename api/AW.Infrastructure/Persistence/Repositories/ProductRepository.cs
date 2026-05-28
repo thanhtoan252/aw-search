@@ -14,11 +14,19 @@ internal sealed class ProductRepository(AdventureWorksDbContext db) : IProductRe
 
         if (products.Count == 0) return [];
 
-        var photoByProductId = await LoadPhotosByProductIdAsync(products, ct);
         var descriptionByModelId = await LoadDescriptionsByModelIdAsync(products, ct);
 
-        return [.. products.Select(p => HydrateProduct(p, photoByProductId, descriptionByModelId))];
+        return [.. products.Select(p => HydrateProduct(p, descriptionByModelId))];
     }
+
+    public async Task<byte[]?> GetThumbnailAsync(int productId, CancellationToken ct = default) =>
+        await db.ProductProductPhotos
+            .AsNoTracking()
+            .Where(pp => pp.ProductID == productId)
+            .Include(pp => pp.ProductPhoto)
+            .OrderByDescending(pp => pp.Primary)
+            .Select(pp => pp.ProductPhoto!.ThumbNailPhoto)
+            .FirstOrDefaultAsync(ct);
 
     private Task<List<Product>> LoadProductPageAsync(int skip, int take, CancellationToken ct) =>
         db.Products
@@ -29,23 +37,6 @@ internal sealed class ProductRepository(AdventureWorksDbContext db) : IProductRe
             .Skip(skip)
             .Take(take)
             .ToListAsync(ct);
-
-    private async Task<Dictionary<int, byte[]?>> LoadPhotosByProductIdAsync(
-        IReadOnlyList<Product> products,
-        CancellationToken ct)
-    {
-        var productIds = products.Select(p => p.ProductId).ToList();
-
-        return (await db.ProductProductPhotos
-                .AsNoTracking()
-                .Where(pp => productIds.Contains(pp.ProductID))
-                .Include(pp => pp.ProductPhoto)
-                .ToListAsync(ct))
-            .GroupBy(pp => pp.ProductID)
-            .ToDictionary(
-                g => g.Key,
-                g => g.OrderByDescending(pp => pp.Primary).First().ProductPhoto?.ThumbNailPhoto);
-    }
 
     private Task<Dictionary<int, string?>> LoadDescriptionsByModelIdAsync(
         IReadOnlyList<Product> products,
@@ -66,7 +57,6 @@ internal sealed class ProductRepository(AdventureWorksDbContext db) : IProductRe
 
     private static Product HydrateProduct(
         Product product,
-        IReadOnlyDictionary<int, byte[]?> photoByProductId,
         IReadOnlyDictionary<int, string?> descriptionByModelId) => new()
     {
         ProductId = product.ProductId,
@@ -83,7 +73,6 @@ internal sealed class ProductRepository(AdventureWorksDbContext db) : IProductRe
         SellStartDate = product.SellStartDate,
         DiscontinuedDate = product.DiscontinuedDate,
         ModifiedDate = product.ModifiedDate,
-        ThumbnailPhoto = photoByProductId.GetValueOrDefault(product.ProductId),
         Subcategory = product.Subcategory,
         Model = HydrateModel(product.Model, descriptionByModelId),
     };

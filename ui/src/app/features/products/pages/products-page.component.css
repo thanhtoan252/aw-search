@@ -1,0 +1,12 @@
+.aw-search-field {
+  position: relative;
+  display: block;
+}
+
+.aw-search-field__input.p-inputtext {
+  width: 100%;
+  height: 2.75rem;
+  padding-left: 2.5rem;
+  padding-right: 1rem;
+  font-size: 0.875rem;
+}

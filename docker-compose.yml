@@ -4,7 +4,7 @@ services:
     platform: linux/amd64
     container_name: aw-sqlserver
     environment:
-      SA_PASSWORD: "AdventureWorks@2024"
+      SA_PASSWORD: "${SQLSERVER_SA_PASSWORD}"
       ACCEPT_EULA: "Y"
       MSSQL_PID: "Developer"
     ports:
@@ -47,13 +47,13 @@ services:
       dockerfile: Dockerfile
     container_name: aw-api
     ports:
-      - "5001:8080"
+      - "${API_PORT}:8080"
     environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__AdventureWorks=Server=sqlserver;Database=AdventureWorks2022;User Id=sa;Password=AdventureWorks@2024;TrustServerCertificate=True
-      - Elasticsearch__Uri=http://elasticsearch:9200
-      - Indexing__BatchSize=500
-      - Indexing__IntervalMinutes=60
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT}
+      - ConnectionStrings__AdventureWorks=Server=sqlserver;Database=AdventureWorks2022;User Id=sa;Password=${SQLSERVER_SA_PASSWORD};TrustServerCertificate=True
+      - Elasticsearch__Uri=${ELASTICSEARCH_URI}
+      - Indexing__BatchSize=${INDEXING_BATCH_SIZE}
+      - Indexing__IntervalMinutes=${INDEXING_INTERVAL_MINUTES}
     depends_on:
       sqlserver:
         condition: service_healthy
@@ -66,7 +66,9 @@ services:
       dockerfile: Dockerfile
     container_name: aw-frontend
     ports:
-      - "3000:80"
+      - "${UI_PORT}:80"
+    environment:
+      - API_URL=${API_URL}
     depends_on:
       - api
 

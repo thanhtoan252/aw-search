@@ -14,7 +14,5 @@ public interface IProductSearchStore
 
     Task<Result<ProductSearchResult>> GetByIdAsync(int id, CancellationToken ct = default);
 
-    Task<Result<byte[]>> GetThumbnailAsync(int id, CancellationToken ct = default);
-
     Task<Result<IndexStats>> GetStatsAsync(CancellationToken ct = default);
 }
