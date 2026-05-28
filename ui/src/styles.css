@@ -14,3 +14,50 @@ input,
 select {
   font: inherit;
 }
+
+app-pagination .p-paginator {
+  background: transparent;
+  border: 0;
+  gap: 0.375rem;
+  padding: 0;
+}
+
+app-pagination .p-paginator .p-paginator-page,
+app-pagination .p-paginator .p-paginator-first,
+app-pagination .p-paginator .p-paginator-prev,
+app-pagination .p-paginator .p-paginator-next,
+app-pagination .p-paginator .p-paginator-last {
+  min-width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: 999px;
+  color: #64748b;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+app-pagination .p-paginator .p-paginator-page:not(.p-paginator-page-selected):hover,
+app-pagination .p-paginator .p-paginator-first:not(.p-disabled):hover,
+app-pagination .p-paginator .p-paginator-prev:not(.p-disabled):hover,
+app-pagination .p-paginator .p-paginator-next:not(.p-disabled):hover,
+app-pagination .p-paginator .p-paginator-last:not(.p-disabled):hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+app-pagination .p-paginator .p-paginator-page.p-paginator-page-selected {
+  background: #030712;
+  color: #ffffff;
+  box-shadow:
+    0 0 0 2px #ffffff,
+    0 0 0 3px #030712;
+  font-weight: 700;
+}
+
+app-pagination .p-paginator .p-disabled {
+  opacity: 0.38;
+}

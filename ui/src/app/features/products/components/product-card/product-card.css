@@ -153,6 +153,12 @@
   white-space: nowrap;
 }
 
+.aw-product-card__price--unavailable {
+  color: #737373;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
 .aw-product-card__brand {
   max-width: 6rem;
   text-align: right;

@@ -1,13 +1,14 @@
 import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
-import { Product, ProductQuery, defaultProductQuery } from './models/products.models';
+import { Product, ProductFacets, ProductQuery, defaultProductQuery } from './models/products.models';
 import { ProductsApiService } from './services/products-api.service';
 
 type ProductsState = {
   query: ProductQuery;
   items: Product[];
   total: number;
+  facets: ProductFacets;
   loading: boolean;
   error: string | null;
 };
@@ -16,6 +17,11 @@ const initialState: ProductsState = {
   query: defaultProductQuery,
   items: [],
   total: 0,
+  facets: {
+    categories: [],
+    colors: [],
+    productLines: [],
+  },
   loading: false,
   error: null,
 };
@@ -26,6 +32,15 @@ export const ProductsStore = signalStore(
     totalPages: computed(() => Math.max(1, Math.ceil(store.total() / store.query.pageSize()))),
     rangeStart: computed(() => (store.total() === 0 ? 0 : (store.query.page() - 1) * store.query.pageSize() + 1)),
     rangeEnd: computed(() => Math.min(store.total(), store.query.page() * store.query.pageSize())),
+    facetGroups: computed(() => [
+      { label: 'Categories', queryKey: 'category' as const, items: store.facets.categories() },
+      { label: 'Colors', queryKey: 'color' as const, items: store.facets.colors() },
+      { label: 'Product lines', queryKey: 'brand' as const, items: store.facets.productLines() },
+    ].filter((group) => group.items.length > 0)),
+    hasSummaryFilters: computed(() => {
+      const query = store.query();
+      return query.category !== 'all' || query.color !== 'all' || query.brand !== 'all';
+    }),
     hasFilters: computed(() => {
       const query = store.query();
       return (
@@ -48,12 +63,14 @@ export const ProductsStore = signalStore(
         patchState(store, {
           items: response.items,
           total: response.total,
+          facets: response.facets,
           loading: false,
         });
       } catch (error) {
         patchState(store, {
           items: [],
           total: 0,
+          facets: initialState.facets,
           loading: false,
           error: error instanceof Error ? error.message : 'Unable to load products.',
         });

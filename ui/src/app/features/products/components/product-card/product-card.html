@@ -28,8 +28,14 @@
         }
       </div>
 
+      <app-product-match [product]="product()" />
+
       <div class="aw-product-card__footer">
-        <span class="aw-product-card__price">{{ product().price | currency }}</span>
+        @if (product().price > 0) {
+          <span class="aw-product-card__price">{{ product().price | currency }}</span>
+        } @else {
+          <span class="aw-product-card__price aw-product-card__price--unavailable">N/A</span>
+        }
         <span class="aw-product-card__brand">{{ product().brand }}</span>
       </div>
     </div>

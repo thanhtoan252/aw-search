@@ -4,6 +4,8 @@ using AW.Domain.Entities;
 using AW.Domain.Models;
 using Elastic.Clients.Elasticsearch;
 using Elastic.Clients.Elasticsearch.Aggregations;
+using Elastic.Clients.Elasticsearch.Core.Explain;
+using Elastic.Clients.Elasticsearch.Core.Search;
 using Elastic.Clients.Elasticsearch.Fluent;
 using Microsoft.Extensions.Logging;
 using IndexStats = AW.Domain.Models.IndexStats;
@@ -112,6 +114,7 @@ internal sealed class ElasticsearchProductSearchStore(
             .Indices(IndexName)
             .From((filter.Page - 1) * filter.PageSize)
             .Size(filter.PageSize)
+            .Explain(filter.HasTextQuery)
             .Query(q => queryHelper.BuildQuery(q, filter))
             .Aggregations(BuildFacetAggregations)
             .Sort(so => so
@@ -136,14 +139,91 @@ internal sealed class ElasticsearchProductSearchStore(
 
     private static SearchResponse ToSearchResponse(
         Elastic.Clients.Elasticsearch.SearchResponse<ProductDocument> response,
-        SearchFilter filter) => new()
+        SearchFilter filter)
+    {
+        var hits = response.Hits
+            .Where(h => h.Source is not null)
+            .ToList();
+        var maxScore = hits.Count == 0 ? 0 : hits.Max(h => h.Score ?? 0);
+
+        return new SearchResponse
         {
-            Items = [..response.Documents.Select(ProductDocumentMapper.ToResult)],
+            Items = [..hits.Select(hit => ProductDocumentMapper.ToResult(
+                hit.Source!,
+                hit.Score,
+                CalculateMatchRatio(hit.Score, maxScore),
+                ToSearchExplain(hit.Explanation)))],
             Total = response.Total,
             Page = filter.Page,
             PageSize = filter.PageSize,
             Facets = ElasticsearchQueryHelper.ExtractFacets(response.Aggregations),
         };
+    }
+
+    private static int CalculateMatchRatio(double? score, double maxScore)
+    {
+        if (maxScore <= 0)
+        {
+            return 100;
+        }
+
+        return (int)Math.Round((score ?? 0) / maxScore * 100);
+    }
+
+    private static SearchExplain? ToSearchExplain(Explanation? explanation)
+    {
+        if (explanation is null)
+        {
+            return null;
+        }
+
+        return new SearchExplain
+        {
+            Value = explanation.Value,
+            Description = explanation.Description,
+            Details = ToSearchExplainDetails(explanation.Details),
+        };
+    }
+
+    private static IReadOnlyList<SearchExplain> ToSearchExplainDetails(
+        IReadOnlyCollection<ExplanationDetail>? details) =>
+        details is null
+            ? []
+            : FlattenExplanationDetails(details)
+                .Where(d => IsUsefulExplainDetail(d.Description))
+                .OrderByDescending(d => d.Value)
+                .Take(5)
+                .Select(d => new SearchExplain
+                {
+                    Value = d.Value,
+                    Description = d.Description,
+                    Details = [],
+                })
+                .ToList();
+
+    private static IEnumerable<ExplanationDetail> FlattenExplanationDetails(IEnumerable<ExplanationDetail> details)
+    {
+        foreach (var detail in details)
+        {
+            yield return detail;
+
+            foreach (var child in FlattenExplanationDetails(detail.Details ?? []))
+            {
+                yield return child;
+            }
+        }
+    }
+
+    private static bool IsUsefulExplainDetail(string description)
+    {
+        if (string.IsNullOrWhiteSpace(description))
+        {
+            return false;
+        }
+
+        return description.Contains("weight(", StringComparison.OrdinalIgnoreCase)
+            || description.Contains("fieldWeight", StringComparison.OrdinalIgnoreCase);
+    }
 
     public async Task<Result<ProductSearchResult>> GetByIdAsync(int id, CancellationToken ct = default)
     {

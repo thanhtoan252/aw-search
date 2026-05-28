@@ -2,12 +2,11 @@
   <section class="mx-auto max-w-[1220px]">
     <header class="space-y-3">
       <div>
-        <h1 class="text-[30px] font-semibold leading-tight tracking-normal">Product Showcase</h1>
+        <h1 class="aw-page-title">AdventureWorks - Product Search</h1>
         <p class="mt-2 text-sm text-neutral-500">
-          Search Elasticsearch-backed products and narrow results with URL-synced filters.
+          Search AdventureWorks products and narrow results with URL-synced filters.
         </p>
       </div>
-
       <label class="aw-search-field">
         <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="m21 21-4.3-4.3m1.3-5.2a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -24,10 +23,7 @@
 
     <div class="my-6 h-px bg-neutral-200"></div>
 
-    <div class="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-      <app-product-filters [form]="form" (resetFilters)="resetFilters()" />
-
-      <section class="min-w-0">
+    <section class="min-w-0">
         <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
           <p class="text-sm text-neutral-500">
             @if (store.loading()) {
@@ -41,12 +37,45 @@
           }
         </div>
 
+        @if (!store.loading() && store.facetGroups().length > 0) {
+          <div class="aw-facet-summary" aria-label="Result facets">
+            <div class="aw-facet-summary__header">
+              <span>Refine by result facets</span>
+              @if (store.hasSummaryFilters()) {
+                <button type="button" class="aw-facet-summary__clear" aria-label="Clear summary filters" (click)="clearSummaryFilters()">
+                  <span aria-hidden="true">×</span>
+                  Clear
+                </button>
+              }
+            </div>
+            @for (group of store.facetGroups(); track group.label) {
+              <section class="aw-facet-summary__group">
+                <h2>{{ group.label }}</h2>
+                <div class="aw-facet-summary__items">
+                  @for (facet of group.items; track facet.value) {
+                    <button
+                      type="button"
+                      class="aw-facet-summary__item"
+                      [class.aw-facet-summary__item--active]="isFacetActive(group.queryKey, facet.value)"
+                      [attr.aria-pressed]="isFacetActive(group.queryKey, facet.value)"
+                      (click)="applySummaryFilter(group.queryKey, facet.value)"
+                    >
+                      {{ facet.value }}
+                      <strong>{{ facet.count | number }}</strong>
+                    </button>
+                  }
+                </div>
+              </section>
+            }
+          </div>
+        }
+
         @if (store.error()) {
           <div class="rounded-lg border border-red-200 bg-red-50 p-6 text-sm text-red-700">
             {{ store.error() }}
           </div>
         } @else if (store.loading()) {
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
             @for (_ of skeletons; track $index) {
               <div class="h-[392px] animate-pulse rounded-lg border border-neutral-200 bg-neutral-50"></div>
             }
@@ -57,7 +86,7 @@
             <p class="mt-2 text-sm text-neutral-500">Adjust the search or clear filters to see more results.</p>
           </div>
         } @else {
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
             @for (product of store.items(); track product.id) {
               <app-product-card [product]="product" />
             }
@@ -67,10 +96,9 @@
             [currentPage]="store.query.page()"
             [rows]="store.query.pageSize()"
             [totalRecords]="store.total()"
-            (pageSelected)="goToPage($event)"
+            (paginationChanged)="goToPage($event)"
           />
         }
-      </section>
-    </div>
+    </section>
   </section>
 </main>

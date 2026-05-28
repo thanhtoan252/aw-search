@@ -6,8 +6,17 @@ import { getAppConfig } from '../../../core/config/app.config';
 import {
   ProductQuery,
   ProductSearchResponse,
+  SearchExplain,
   productSearchResponseSchema,
 } from '../models/products.models';
+
+const backendSearchExplainSchema: z.ZodType<SearchExplain> = z.lazy(() =>
+  z.object({
+    value: z.number(),
+    description: z.string(),
+    details: z.array(backendSearchExplainSchema).default([]),
+  }),
+);
 
 const backendProductSchema = z.object({
   productId: z.number(),
@@ -22,6 +31,14 @@ const backendProductSchema = z.object({
   description: z.string().nullable(),
   productLine: z.string().nullable(),
   isDiscontinued: z.boolean(),
+  searchScore: z.number().nullable().optional(),
+  matchRatio: z.number().int().min(0).max(100).default(100),
+  explain: backendSearchExplainSchema.nullable().optional(),
+});
+
+const backendFacetSchema = z.object({
+  value: z.string(),
+  count: z.number(),
 });
 
 const backendSearchResponseSchema = z.object({
@@ -29,6 +46,8 @@ const backendSearchResponseSchema = z.object({
   total: z.number(),
   page: z.number(),
   pageSize: z.number(),
+  totalPages: z.number().default(0),
+  facets: z.record(z.string(), z.array(backendFacetSchema)).default({}),
 });
 
 @Injectable({ providedIn: 'root' })
@@ -64,11 +83,20 @@ export class ProductsApiService {
           available: !item.isDiscontinued,
           imageUrl: `${this.apiUrl}/api/products/${item.productId}/thumbnail`,
           tags: [item.categoryName ?? 'Products', model],
+          searchScore: item.searchScore ?? null,
+          matchRatio: item.matchRatio,
+          explain: item.explain ?? null,
         };
       }),
       total: parsed.total,
       page: parsed.page,
       pageSize: parsed.pageSize,
+      totalPages: parsed.totalPages,
+      facets: {
+        categories: parsed.facets['categories'] ?? [],
+        colors: parsed.facets['colors'] ?? [],
+        productLines: parsed.facets['productLines'] ?? [],
+      },
     });
   }
 

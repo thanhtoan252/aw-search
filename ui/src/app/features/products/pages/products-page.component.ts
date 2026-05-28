@@ -2,21 +2,30 @@ import { CdkScrollable } from '@angular/cdk/scrolling';
 import { DecimalPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { FormControl, FormGroup, NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Params, Router } from '@angular/router';
 import { InputTextModule } from 'primeng/inputtext';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { z } from 'zod';
-import { Pagination } from '../../../shared/components/pagination/pagination';
+import { Pagination, PaginationChange } from '../../../shared/components/pagination/pagination';
 import { ProductCard } from '../components/product-card/product-card';
-import { ProductFilters } from '../components/product-filters/product-filters';
-import { ProductFiltersFormGroup } from '../models/products-ui.models';
 import { ProductQuery, defaultProductQuery, productQuerySchema } from '../models/products.models';
 import { ProductsStore } from '../product.store';
 
+type SummaryFilterKey = 'category' | 'color' | 'brand';
+type ProductsSearchForm = FormGroup<{
+  q: FormControl<string>;
+  category: FormControl<ProductQuery['category']>;
+  brand: FormControl<ProductQuery['brand']>;
+  color: FormControl<ProductQuery['color']>;
+  minPrice: FormControl<number>;
+  maxPrice: FormControl<number>;
+  available: FormControl<boolean>;
+}>;
+
 @Component({
   selector: 'app-products-page',
-  imports: [ReactiveFormsModule, DecimalPipe, CdkScrollable, InputTextModule, ProductFilters, ProductCard, Pagination],
+  imports: [ReactiveFormsModule, DecimalPipe, CdkScrollable, InputTextModule, ProductCard, Pagination],
   providers: [ProductsStore],
   templateUrl: './products-page.component.html',
   styleUrl: './products-page.component.css',
@@ -26,7 +35,7 @@ export class ProductsPageComponent {
   readonly store = inject(ProductsStore);
   readonly skeletons = Array.from({ length: 8 });
 
-  readonly form: ProductFiltersFormGroup = inject(NonNullableFormBuilder).group({
+  readonly form: ProductsSearchForm = inject(NonNullableFormBuilder).group({
     q: [defaultProductQuery.q],
     category: [defaultProductQuery.category],
     brand: [defaultProductQuery.brand],
@@ -61,13 +70,34 @@ export class ProductsPageComponent {
       });
   }
 
-  resetFilters(): void {
-    void this.navigateWith({ ...defaultProductQuery, page: 1 });
+  goToPage(event: PaginationChange): void {
+    const pageSize = event.pageSize;
+    const totalPages = Math.max(1, Math.ceil(this.store.total() / pageSize));
+    const page = Math.min(Math.max(1, event.page), totalPages);
+
+    void this.navigateWith({ ...this.store.query(), page, pageSize });
   }
 
-  goToPage(page: number): void {
-    const clamped = Math.min(Math.max(1, page), this.store.totalPages());
-    void this.navigateWith({ ...this.store.query(), page: clamped });
+  applySummaryFilter(key: SummaryFilterKey, value: string): void {
+    void this.navigateWith({
+      ...this.store.query(),
+      [key]: this.isFacetActive(key, value) ? 'all' : value,
+      page: 1,
+    });
+  }
+
+  clearSummaryFilters(): void {
+    void this.navigateWith({
+      ...this.store.query(),
+      category: 'all',
+      brand: 'all',
+      color: 'all',
+      page: 1,
+    });
+  }
+
+  isFacetActive(key: SummaryFilterKey, value: string): boolean {
+    return this.store.query()[key] === value;
   }
 
   private readForm(): ProductQuery {
@@ -83,7 +113,7 @@ export class ProductsPageComponent {
     });
   }
 
-  private formValueFromQuery(query: ProductQuery): ReturnType<ProductFiltersFormGroup['getRawValue']> {
+  private formValueFromQuery(query: ProductQuery): ReturnType<ProductsSearchForm['getRawValue']> {
     return {
       q: query.q,
       category: query.category,

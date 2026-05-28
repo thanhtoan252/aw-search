@@ -1,0 +1,64 @@
+@if (product().explain; as explain) {
+  <div class="aw-product-match">
+    <div class="aw-product-match__header">
+      <span>Match</span>
+      <strong>{{ product().matchRatio }}%</strong>
+    </div>
+    <div class="aw-product-match__track" aria-hidden="true">
+      <span class="aw-product-match__bar" [style.width.%]="product().matchRatio"></span>
+    </div>
+
+    <div class="aw-product-match__actions">
+      <p-button
+        label="Why matched"
+        size="small"
+        severity="secondary"
+        [text]="true"
+        (onClick)="explainPopover.toggle($event)"
+      />
+      <p-popover #explainPopover styleClass="aw-product-match__popover">
+        <div class="aw-product-match__panel">
+          <div class="aw-product-match__heading">
+            <div>
+              <span>Why this result matched</span>
+              <p>Search relevance summary</p>
+            </div>
+          </div>
+
+          <div class="aw-product-match__metrics" aria-label="Match metrics">
+            <div>
+              <span>Match</span>
+              <strong>{{ product().matchRatio }}%</strong>
+            </div>
+            <div>
+              <span>Score</span>
+              <strong>{{ explain.value | number: '1.2-2' }}</strong>
+            </div>
+          </div>
+
+          <section class="aw-product-match__summary">
+            <h3>Summary</h3>
+            <p [title]="explain.description">{{ formatSummary(explain) }}</p>
+          </section>
+
+          @if (explain.details.length > 0) {
+            <section class="aw-product-match__reasons">
+              <h3>Top matching fields</h3>
+              <ul>
+                @for (detail of explain.details; track detail.description) {
+                  <li>
+                    <span>{{ detail.value | number: '1.2-2' }}</span>
+                    <div>
+                      <strong [title]="detail.description">{{ formatReason(detail) }}</strong>
+                      <p>{{ reasonDescription(detail) }}</p>
+                    </div>
+                  </li>
+                }
+              </ul>
+            </section>
+          }
+        </div>
+      </p-popover>
+    </div>
+  </div>
+}

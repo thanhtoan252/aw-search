@@ -49,5 +49,15 @@ internal static class ProductSearchMapper
         Description = r.Description,
         ProductLine = r.ProductLine,
         IsDiscontinued = r.IsDiscontinued,
+        SearchScore = r.SearchScore,
+        MatchRatio = r.MatchRatio,
+        Explain = r.Explain is null ? null : ToDto(r.Explain),
+    };
+
+    private static SearchExplainDto ToDto(SearchExplain explain) => new()
+    {
+        Value = explain.Value,
+        Description = explain.Description,
+        Details = explain.Details.Select(ToDto).ToList(),
     };
 }

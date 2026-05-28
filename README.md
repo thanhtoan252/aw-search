@@ -94,14 +94,83 @@ HTTP request -> ProductSearchEndpoints -> ProductSearchService -> Elasticsearch
 HTTP thumbnail request -> ProductSearchService -> ProductRepository -> SQL Server
 ```
 
+## How The Project Works
+
+This section explains the project flow for non-technical readers.
+
+### 1. Product data starts in SQL Server
+
+The original product catalog lives in SQL Server, using the AdventureWorks sample database. SQL Server is the source of truth, which means product names, prices, categories, colors, descriptions, and photos all come from there first.
+
+### 2. The app copies searchable product data into Elasticsearch
+
+Searching directly in SQL Server can be slow and less flexible for fuzzy text search. To make search fast, the backend reads product records from SQL Server and creates search documents in Elasticsearch.
+
+Each search document contains the product fields people usually search or filter by:
+
+- Product name and product number
+- Model and description
+- Category and subcategory
+- Color, product line, and price
+- Availability/discontinued status
+
+The indexing job runs automatically after the app starts. It can also run again on a schedule or when manually triggered. This keeps Elasticsearch updated with product data from SQL Server.
+
+### 3. A user searches from the UI
+
+The Angular UI has a search box and result facets. When a user types a search term or clicks a facet, the UI updates the URL query string and asks the backend for matching products.
+
+For example, a user might search for `classic` or click a facet such as `Bikes` or `Black`.
+
+### 4. The backend searches Elasticsearch
+
+The API receives the search request and sends it to Elasticsearch. Elasticsearch checks the searchable fields and ranks products by relevance.
+
+The search supports:
+
+- Fuzzy text matching, so close terms can still find products
+- Category, color, product line, and price filters
+- Facets, which are counts that show how many matching products exist in each group
+- Pagination, so the UI can load 15, 30, or 45 products per page
+
+When the user enters a text query, Elasticsearch also explains why each product matched. The backend simplifies that explanation before sending it to the UI.
+
+### 5. The API returns UI-ready results
+
+The backend response includes the products plus search metadata:
+
+- Product information such as name, price, category, model, and thumbnail URL
+- `searchScore`, the raw relevance score from Elasticsearch
+- `matchRatio`, a 0-100% score normalized within the current page
+- `explain`, a short explanation of the top matching fields
+- Facet counts for categories, colors, and product lines
+- Paging information
+
+Product thumbnails are not stored in Elasticsearch. The UI loads thumbnails through a separate API endpoint, and the backend reads the photo data from SQL Server.
+
+### 6. The UI renders the search experience
+
+The UI shows products as cards in a five-column desktop grid. Each card shows product details, price, stock status, and, when available, match information.
+
+The `Why matched` popover explains the search result in simple terms, such as whether the match came mostly from the product name, model, category, or description.
+
+The facet summary above the results lets users refine the current result set by clicking category, color, or product line counts. The clear action removes those facet filters without clearing the search text.
+
+### 7. Search state stays shareable
+
+The UI stores search text, filters, page number, and page size in the browser URL. This means a user can refresh the page, bookmark it, or share the link and keep the same search view.
+
 ## Frontend Design
 
 The UI is an Angular application using route-backed search state.
 
-- `ProductsPageComponent` owns the filter form, URL query params, pagination, and page events.
+- `ProductsPageComponent` owns the search form, URL query params, clickable facet filters, pagination, and page events.
 - `ProductsStore` is an NgRx Signals store for query state, loading, errors, totals, and computed ranges.
-- `ProductsApiService` calls `/api/products/search`, validates backend responses with Zod, and maps API products into UI products.
-- `ProductFilters`, `ProductCard`, and `Pagination` provide the feature UI.
+- `ProductsApiService` calls `/api/products/search`, validates backend responses with Zod, and maps API products, facets, match ratios, and explain summaries into UI models.
+- `ProductCard`, `ProductMatch`, and `Pagination` provide the feature UI.
+- Search results render in a five-column desktop grid. The default page size is 15, with paginator options for 15, 30, and 45 rows.
+- Facet summaries above the results are clickable filters for category, color, and product line. The summary includes a compact clear action for those facet filters.
+- Match details are shown only when the backend returns explain data. The `Why matched` popover summarizes score, match ratio, and the top matching fields.
 - Tailwind CSS is generated into `src/tailwind.generated.css` before Angular builds.
 
 The browser reads `window.__APP_CONFIG__.apiUrl` from `/runtime-config.js`. In Docker, `ui/docker-entrypoint.sh` writes that file from `ui/public/runtime-config.template.js` using the `API_URL` environment variable. If `API_URL` is empty, the UI uses same-origin `/api` calls through nginx.
@@ -142,6 +211,14 @@ Search uses Elasticsearch `multi_match` with `best_fields` and `AUTO` fuzziness.
 | `subcategoryName` | 1.0 |
 
 Filters are applied through `bool.filter` for category, color, product line, and price range. Results sort by `_score desc`, then `listPrice asc`.
+
+When a text query is supplied, Elasticsearch explain data is enabled for the search request. The backend maps each hit from `response.Hits` so the API can return:
+
+- `searchScore`
+- `matchRatio`, normalized to the highest score in the current page
+- `explain`, a concise summary of the top matching fields
+
+Filter-only searches do not return explain data, and the UI hides match details for those results.
 
 Returned facets:
 

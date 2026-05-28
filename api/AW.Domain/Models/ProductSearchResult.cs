@@ -14,4 +14,7 @@ public sealed record ProductSearchResult
     public string? Description { get; init; }
     public string? ProductLine { get; init; }
     public bool IsDiscontinued { get; init; }
+    public double? SearchScore { get; init; }
+    public int MatchRatio { get; init; }
+    public SearchExplain? Explain { get; init; }
 }

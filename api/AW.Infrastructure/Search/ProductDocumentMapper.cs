@@ -26,7 +26,11 @@ internal static class ProductDocumentMapper
         IndexedAt = DateTime.UtcNow,
     };
 
-    internal static ProductSearchResult ToResult(ProductDocument doc) => new()
+    internal static ProductSearchResult ToResult(
+        ProductDocument doc,
+        double? searchScore = null,
+        int matchRatio = 100,
+        SearchExplain? explain = null) => new()
     {
         ProductId = doc.ProductId,
         Name = doc.Name,
@@ -39,7 +43,10 @@ internal static class ProductDocumentMapper
         ModelName = doc.ModelName,
         Description = doc.Description,
         ProductLine = doc.ProductLine,
-        IsDiscontinued = doc.IsDiscontinued
+        IsDiscontinued = doc.IsDiscontinued,
+        SearchScore = searchScore,
+        MatchRatio = matchRatio,
+        Explain = explain,
     };
 
 }
